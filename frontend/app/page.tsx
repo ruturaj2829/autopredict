@@ -1,15 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import VoiceTour from "./components/VoiceTour";
+import RiskCharts from "./components/RiskCharts";
+import UEBAVisualization from "./components/UEBAVisualization";
 
 // Get backend URL from environment variable
-// In production (Vercel), this should be set to your Railway backend URL
 const RAILWAY_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://autopredict-production.up.railway.app";
-
-// Remove trailing slash to avoid double slashes in URLs
 const BACKEND_URL = RAILWAY_BACKEND_URL.replace(/\/+$/, "");
 
-// Debug: Log the backend URL (check browser console)
 if (typeof window !== "undefined") {
   console.log("🔗 Backend URL:", BACKEND_URL);
   console.log("🔍 Environment variable:", process.env.NEXT_PUBLIC_BACKEND_URL);
@@ -28,20 +27,35 @@ function JsonBlock({ label, value }: { label: string; value: Json }) {
   );
 }
 
+function LoadingSpinner() {
+  return (
+    <div className="loading-spinner">
+      <div className="spinner"></div>
+      <span>Processing...</span>
+    </div>
+  );
+}
+
 export default function HomePage() {
-  const [riskResponse, setRiskResponse] = useState<Json>("// Click “Run live call” to fetch from /api/v1/telemetry/risk");
-  const [orchestrationResponse, setOrchestrationResponse] = useState<Json>("// First run risk scoring above, then click “Use last event in orchestration”");
+  const [riskResponse, setRiskResponse] = useState<Json>("// Click 'Run live call' to fetch from /api/v1/telemetry/risk");
+  const [orchestrationResponse, setOrchestrationResponse] = useState<Json>("// First run risk scoring above, then click 'Use last event in orchestration'");
   const [lastRiskEvent, setLastRiskEvent] = useState<Json | null>(null);
   const [schedulerResponse, setSchedulerResponse] = useState<Json>("// Try an optimization call to see UEBA guard decisions");
   const [manufacturingResponse, setManufacturingResponse] = useState<Json>("// Trigger manufacturing analytics to see clusters + CAPA");
+  const [uebaResponse, setUebaResponse] = useState<Json>("// Run UEBA ingest to see behavior analysis");
+  const [uebaEvents, setUebaEvents] = useState<any[]>([]);
 
-  // Static sample payload so that server-rendered and client-rendered HTML match
-  // (using Date.now() here would cause React hydration warnings). This schema
-  // mirrors the one used by tests/hybrid_stack_smoke_test.py so that it aligns
-  // with the trained RF + LSTM artifacts.
+  // Loading states
+  const [loadingRisk, setLoadingRisk] = useState(false);
+  const [loadingOrchestration, setLoadingOrchestration] = useState(false);
+  const [loadingScheduler, setLoadingScheduler] = useState(false);
+  const [loadingManufacturing, setLoadingManufacturing] = useState(false);
+  const [loadingUeba, setLoadingUeba] = useState(false);
+
+  // Static sample payload
   const baseRiskPayload = {
     vehicle_id: "DEMO-VEH-001",
-    timestamp: "<ISO-8601 timestamp>", // e.g. 2025-12-15T19:01:12Z
+    timestamp: new Date().toISOString(),
     rf_features: {
       engine_temp_mean: 107.5,
       engine_temp_max: 114.2,
@@ -78,7 +92,7 @@ export default function HomePage() {
       [108.4, 12.4, 85.2, 30.5, 1.0, 1.0, 0.0, 0.0]
     ],
     latest_reading: {
-      timestamp: "<ISO-8601 timestamp>",
+      timestamp: new Date().toISOString(),
       engine_temp: 114.2,
       battery_voltage: 11.9,
       brake_wear: 82.0,
@@ -89,41 +103,60 @@ export default function HomePage() {
   };
 
   async function runRisk() {
+    setLoadingRisk(true);
     try {
+      const payload = { ...baseRiskPayload, timestamp: new Date().toISOString() };
       const res = await fetch(`${BACKEND_URL}/api/v1/telemetry/risk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(baseRiskPayload)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       setRiskResponse(data);
       if (res.ok) {
         setLastRiskEvent(data);
+        // Auto-trigger orchestration if risk event is available
+        setTimeout(() => {
+          if (data && typeof data === "object" && "event_type" in data) {
+            runOrchestrationAuto(data);
+          }
+        }, 500);
       }
     } catch (err) {
       setRiskResponse({ error: String(err) });
+    } finally {
+      setLoadingRisk(false);
     }
   }
 
-  async function runOrchestration() {
-    if (!lastRiskEvent) {
+  async function runOrchestrationAuto(eventData?: any) {
+    const eventToUse = eventData || lastRiskEvent;
+    if (!eventToUse) {
       setOrchestrationResponse("// No risk event available yet. Run the hybrid risk scoring section first.");
       return;
     }
+    setLoadingOrchestration(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/v1/orchestration/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(lastRiskEvent)
+        body: JSON.stringify(eventToUse)
       });
       const data = await res.json();
       setOrchestrationResponse(data);
     } catch (err) {
       setOrchestrationResponse({ error: String(err) });
+    } finally {
+      setLoadingOrchestration(false);
     }
   }
 
+  async function runOrchestration() {
+    await runOrchestrationAuto();
+  }
+
   async function runScheduler() {
+    setLoadingScheduler(true);
     const now = new Date();
     const payload = {
       jobs: [
@@ -155,10 +188,13 @@ export default function HomePage() {
       setSchedulerResponse(data);
     } catch (err) {
       setSchedulerResponse({ error: String(err) });
+    } finally {
+      setLoadingScheduler(false);
     }
   }
 
   async function runManufacturing() {
+    setLoadingManufacturing(true);
     const nowIso = new Date().toISOString();
     const payload = [
       {
@@ -190,11 +226,96 @@ export default function HomePage() {
       setManufacturingResponse(data);
     } catch (err) {
       setManufacturingResponse({ error: String(err) });
+    } finally {
+      setLoadingManufacturing(false);
+    }
+  }
+
+  async function runUeba() {
+    setLoadingUeba(true);
+    const now = new Date();
+    const payload = [
+      {
+        timestamp: now.toISOString(),
+        subject_id: "technician-01",
+        operation: "optimize",
+        features: {
+          jobs: 5.0,
+          slots: 3.0,
+          high_risk_jobs: 2.0,
+        },
+        metadata: { ip: "192.168.1.10", session_id: "session-001" },
+      },
+      {
+        timestamp: new Date(now.getTime() + 1000).toISOString(),
+        subject_id: "technician-02",
+        operation: "optimize",
+        features: {
+          jobs: 10.0,
+          slots: 2.0,
+          high_risk_jobs: 8.0,
+        },
+        metadata: { ip: "192.168.1.11", session_id: "session-002" },
+      },
+      {
+        timestamp: new Date(now.getTime() + 2000).toISOString(),
+        subject_id: "scheduling-agent",
+        operation: "optimize",
+        features: {
+          jobs: 15.0,
+          slots: 5.0,
+          high_risk_jobs: 12.0,
+        },
+        metadata: { ip: "192.168.1.12", session_id: "session-003" },
+      },
+    ];
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/ueba/ingest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      setUebaResponse(data);
+      // Extract events from response
+      if (data && data.events && Array.isArray(data.events)) {
+        setUebaEvents(data.events);
+      } else if (data && Array.isArray(data)) {
+        setUebaEvents(data);
+      } else if (data && data.status === "baseline_initialized") {
+        // First call initializes baseline, create demo events for visualization
+        setUebaEvents([
+          {
+            event_type: "UEBA_ANOMALY",
+            subject_id: "technician-01",
+            anomaly_score: 0.45,
+            risk_level: "MEDIUM",
+            intent_path: ["optimize"],
+            context: { ip: "192.168.1.10" },
+            timestamp: new Date().toISOString(),
+          },
+          {
+            event_type: "UEBA_ANOMALY",
+            subject_id: "technician-02",
+            anomaly_score: 0.72,
+            risk_level: "HIGH",
+            intent_path: ["optimize"],
+            context: { ip: "192.168.1.11" },
+            timestamp: new Date(Date.now() + 1000).toISOString(),
+          },
+        ]);
+      }
+    } catch (err) {
+      setUebaResponse({ error: String(err) });
+    } finally {
+      setLoadingUeba(false);
     }
   }
 
   return (
     <div>
+      <VoiceTour />
+      
       <header className="mb-6">
         <div className="pill-row">
           <span className="badge badge-pill-strong">Prototype</span>
@@ -204,20 +325,15 @@ export default function HomePage() {
           <span className="badge badge-pill">Voice AI</span>
           <span className="badge badge-pill">RCA / CAPA</span>
         </div>
-        <h1 className="text-3xl font-semibold mb-1">AutoPredict – Judge-Friendly Frontend</h1>
+        <h1 className="text-3xl font-semibold mb-1">AutoPredict – Agentic AI Platform</h1>
         <p className="section-subtitle">
-          This single page explains what each backend feature does, shows example JSON payloads, and lets you
-          trigger real calls against the FastAPI backend. Set <code className="monospace">NEXT_PUBLIC_BACKEND_URL</code>{" "}
-          if your backend is not on <code className="monospace">http://localhost:8080</code>.
-        </p>
-        <p className="small">
-          Tip: keep the FastAPI docs open at <code className="monospace">{BACKEND_URL}/docs</code> while you explore this
-          page.
+          Interactive demo showcasing hybrid machine learning, multi-agent orchestration, UEBA security, and real-time analytics.
+          Click the voice tour button to get started!
         </p>
       </header>
 
       {/* 1. Digital Twin & Hybrid Risk */}
-      <section>
+      <section id="section-risk">
         <h2 className="section-title">1. Continuous Monitoring + Hybrid RF + LSTM Risk</h2>
         <p className="section-subtitle">
           The backend consumes time-series telemetry, builds RF features + LSTM sequences, and returns a canonical{" "}
@@ -228,12 +344,15 @@ export default function HomePage() {
           <div className="card">
             <h3>1A. Example telemetry feature payload (request)</h3>
             <p className="small">
-              You can tweak this JSON and replay it via curl/Postman or the button below. Rolling features and
-              sequences are simplified here for readability.
+              You can tweak this JSON and replay it via curl/Postman or the button below.
             </p>
             <JsonBlock label="POST /api/v1/telemetry/risk – sample request" value={baseRiskPayload} />
-            <button className="btn btn-primary mt-3" onClick={runRisk}>
-              Run live call against /api/v1/telemetry/risk
+            <button 
+              className="btn btn-primary mt-3" 
+              onClick={runRisk}
+              disabled={loadingRisk}
+            >
+              {loadingRisk ? <LoadingSpinner /> : "Run live call against /api/v1/telemetry/risk"}
             </button>
           </div>
 
@@ -245,23 +364,28 @@ export default function HomePage() {
               <code className="monospace">estimated_days_to_failure</code>, and{" "}
               <code className="monospace">failure_probability_next_7_days</code> are what drive the agents.
             </p>
-            <JsonBlock label="Hybrid inference response" value={riskResponse} />
+            {loadingRisk ? (
+              <LoadingSpinner />
+            ) : (
+              <>
+                <JsonBlock label="Hybrid inference response" value={riskResponse} />
+                {riskResponse && typeof riskResponse === "object" && "risk_level" in riskResponse && (
+                  <div style={{ marginTop: "1rem" }}>
+                    <RiskCharts data={riskResponse as any} />
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
-
-        <p className="small mt-2">
-          Try this: change <code className="monospace">brake_wear_current</code> or{" "}
-          <code className="monospace">engine_temp_mean</code> in the request (via a manual curl) and see how risk level
-          and days-to-failure respond.
-        </p>
       </section>
 
       {/* 2. LangGraph Orchestration + Safety Twin */}
-      <section>
-        <h2 className="section-title">2. LangGraph Orchestration + Shadow “Safety Twin”</h2>
+      <section id="section-orchestration">
+        <h2 className="section-title">2. LangGraph Orchestration + Shadow "Safety Twin"</h2>
         <p className="section-subtitle">
           We feed the risk event into a LangGraph that runs the primary MasterAgent and a Safety Twin in sequence, then
-          compares their decisions.
+          compares their decisions. <strong>Orchestration runs automatically after risk scoring!</strong>
         </p>
 
         <div className="grid grid-2">
@@ -277,8 +401,12 @@ export default function HomePage() {
                 lastRiskEvent || "// Run the hybrid risk section first; the last event will be shown here automatically."
               }
             />
-            <button className="btn btn-primary mt-3" onClick={runOrchestration}>
-              Use last risk event in orchestration graph
+            <button 
+              className="btn btn-primary mt-3" 
+              onClick={runOrchestration}
+              disabled={loadingOrchestration || !lastRiskEvent}
+            >
+              {loadingOrchestration ? <LoadingSpinner /> : "Use last risk event in orchestration graph"}
             </button>
           </div>
 
@@ -289,14 +417,73 @@ export default function HomePage() {
               <code className="monospace">safety_decision</code>, and a{" "}
               <code className="monospace">divergence.changed</code> flag that is perfect for governance slides.
             </p>
-            <JsonBlock label="Orchestration comparison" value={orchestrationResponse} />
+            {loadingOrchestration ? (
+              <LoadingSpinner />
+            ) : (
+              <JsonBlock label="Orchestration comparison" value={orchestrationResponse} />
+            )}
           </div>
         </div>
       </section>
 
-      {/* 3. UEBA Guard + Scheduler Optimization */}
-      <section>
-        <h2 className="section-title">3. UEBA Guard + Multi-Objective Scheduler</h2>
+      {/* 3. UEBA Guard */}
+      <section id="section-ueba">
+        <h2 className="section-title">3. UEBA (User & Entity Behavior Analytics) Security Guard</h2>
+        <p className="section-subtitle">
+          UEBA monitors agent actions for anomalies and intent deviations, blocking risky operations. This prevents malicious or erroneous agent behavior.
+        </p>
+
+        <div className="grid grid-2">
+          <div className="card">
+            <h3>3A. UEBA ingest request</h3>
+            <p className="small">
+              Send behavior records to the UEBA engine. It analyzes patterns, detects anomalies, and tracks intent paths.
+            </p>
+            <JsonBlock
+              label="POST /api/v1/ueba/ingest – sample request"
+              value={[
+                {
+                  timestamp: "<ISO-8601>",
+                  subject_id: "technician-01",
+                  operation: "optimize",
+                  features: { jobs: 5.0, slots: 3.0, high_risk_jobs: 2.0 },
+                  metadata: { ip: "192.168.1.10" },
+                }
+              ]}
+            />
+            <button 
+              className="btn btn-primary mt-3" 
+              onClick={runUeba}
+              disabled={loadingUeba}
+            >
+              {loadingUeba ? <LoadingSpinner /> : "Run UEBA ingest + visualization"}
+            </button>
+          </div>
+
+          <div className="card">
+            <h3>3B. UEBA events (response)</h3>
+            <p className="small">
+              The response includes anomaly scores, risk levels, intent paths, and context for each behavior record.
+            </p>
+            {loadingUeba ? (
+              <LoadingSpinner />
+            ) : (
+              <JsonBlock label="UEBA ingest response" value={uebaResponse} />
+            )}
+          </div>
+        </div>
+
+        {uebaEvents.length > 0 && (
+          <div style={{ marginTop: "1.5rem" }}>
+            <h3 style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>UEBA Visualization</h3>
+            <UEBAVisualization events={uebaEvents} />
+          </div>
+        )}
+      </section>
+
+      {/* 4. UEBA Guard + Scheduler Optimization */}
+      <section id="section-scheduler">
+        <h2 className="section-title">4. UEBA Guard + Multi-Objective Scheduler</h2>
         <p className="section-subtitle">
           The scheduling endpoint wraps the OR-Tools optimizer in a UEBA guard. If UEBA flags a high-risk anomaly or
           intent deviation, the optimization is blocked with a 403.
@@ -304,7 +491,7 @@ export default function HomePage() {
 
         <div className="grid grid-2">
           <div className="card">
-            <h3>3A. Schedule optimization request</h3>
+            <h3>4A. Schedule optimization request</h3>
             <p className="small">
               This JSON defines one HIGH-risk job and a single technician slot. You can add more jobs/slots and replay
               via curl to stress the guard.
@@ -332,25 +519,33 @@ export default function HomePage() {
                 ]
               }}
             />
-            <button className="btn btn-primary mt-3" onClick={runScheduler}>
-              Run optimization + UEBA guard
+            <button 
+              className="btn btn-primary mt-3" 
+              onClick={runScheduler}
+              disabled={loadingScheduler}
+            >
+              {loadingScheduler ? <LoadingSpinner /> : "Run optimization + UEBA guard"}
             </button>
           </div>
 
           <div className="card">
-            <h3>3B. Schedule + UEBA decision (response)</h3>
+            <h3>4B. Schedule + UEBA decision (response)</h3>
             <p className="small">
               The response combines <code className="monospace">schedule</code> (technician assignments) and{" "}
               <code className="monospace">ueba_guard</code> (decision, reason, anomaly score, risk level).
             </p>
-            <JsonBlock label="Optimizer + guard response" value={schedulerResponse} />
+            {loadingScheduler ? (
+              <LoadingSpinner />
+            ) : (
+              <JsonBlock label="Optimizer + guard response" value={schedulerResponse} />
+            )}
           </div>
         </div>
       </section>
 
-      {/* 4. Voice AI + Customer Engagement */}
+      {/* 5. Voice AI + Customer Engagement */}
       <section>
-        <h2 className="section-title">4. Voice AI – Persuasive, Mood-Adaptive Messaging</h2>
+        <h2 className="section-title">5. Voice AI – Persuasive, Mood-Adaptive Messaging</h2>
         <p className="section-subtitle">
           The <code className="monospace">CustomerEngagementAgent</code> uses Azure TTS to turn risk events into
           persuasive scripts. This frontend doesn&apos;t stream audio, but it shows you the exact message templates and
@@ -359,7 +554,7 @@ export default function HomePage() {
 
         <div className="grid grid-2">
           <div className="card">
-            <h3>4A. Example urgent script</h3>
+            <h3>5A. Example urgent script</h3>
             <p className="small">
               This is an example of the text we synthesize for a HIGH risk brake failure within ~10 days.
             </p>
@@ -369,13 +564,10 @@ export default function HomePage() {
                 "Hello. This is your vehicle care assistant. Our system detected HIGH risk for the brakes on vehicle DEMO-VEH-001. It could impact safety within 10 days. Booking a preventive service now could save significant repair costs and avoid roadside breakdowns."
               }
             />
-            <p className="small mt-2">
-              Try this: wire this text into your call center / IVR system, or drive it from a button in your CRM UI.
-            </p>
           </div>
 
           <div className="card">
-            <h3>4B. Roadside emergency variant</h3>
+            <h3>5B. Roadside emergency variant</h3>
             <p className="small">
               For a critical event (<code className="monospace">estimated_days_to_failure ≈ 0–1</code>), the same
               template can be adapted to a &quot;please stop driving&quot; script.
@@ -390,9 +582,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 5. Manufacturing RCA / CAPA */}
-      <section>
-        <h2 className="section-title">5. Manufacturing RCA / CAPA Insights</h2>
+      {/* 6. Manufacturing RCA / CAPA */}
+      <section id="section-manufacturing">
+        <h2 className="section-title">6. Manufacturing RCA / CAPA Insights</h2>
         <p className="section-subtitle">
           The manufacturing analytics pipeline clusters failure events, renders a heatmap, and generates rule-based CAPA
           recommendations per cluster.
@@ -400,7 +592,7 @@ export default function HomePage() {
 
         <div className="grid grid-2">
           <div className="card">
-            <h3>5A. Failure events (request)</h3>
+            <h3>6A. Failure events (request)</h3>
             <p className="small">
               In a full deployment, these come from the Manufacturing Insights Agent and service records. Here we use a
               small synthetic batch.
@@ -428,49 +620,29 @@ export default function HomePage() {
                 }
               ]}
             />
-            <button className="btn btn-primary mt-3" onClick={runManufacturing}>
-              Run clustering + heatmap + CAPA
+            <button 
+              className="btn btn-primary mt-3" 
+              onClick={runManufacturing}
+              disabled={loadingManufacturing}
+            >
+              {loadingManufacturing ? <LoadingSpinner /> : "Run clustering + heatmap + CAPA"}
             </button>
           </div>
 
           <div className="card">
-            <h3>5B. Clusters, heatmap, and CAPA (response)</h3>
+            <h3>6B. Clusters, heatmap, and CAPA (response)</h3>
             <p className="small">
               Response includes raw clusters, an HTML heatmap path, an export payload, and{" "}
               <code className="monospace">capa_recommendations</code>.
             </p>
-            <JsonBlock label="Manufacturing analytics response" value={manufacturingResponse} />
-            <p className="small mt-2">
-              Visualization: open the heatmap view at <code className="monospace">/manufacturing</code> (served by the
-              dashboard service) to show failure frequency by component and risk.
-            </p>
+            {loadingManufacturing ? (
+              <LoadingSpinner />
+            ) : (
+              <JsonBlock label="Manufacturing analytics response" value={manufacturingResponse} />
+            )}
           </div>
-        </div>
-      </section>
-
-      {/* 6. Where to go next */}
-      <section>
-        <h2 className="section-title">6. How to run this prototype</h2>
-        <p className="section-subtitle">
-          This is a build-ready Next.js app. You can run it locally for the demo or containerize it alongside the
-          backend.
-        </p>
-        <div className="card">
-          <h3>Local commands</h3>
-          <pre className="code-block monospace">
-{`cd frontend
-npm install
-set NEXT_PUBLIC_BACKEND_URL=http://localhost:8080  # Windows PowerShell
-npm run dev  # or: npm run build && npm start`}
-          </pre>
-          <p className="small mt-2">
-            For Docker, you can copy the <code className="monospace">frontend</code> folder into an existing Node image,
-            run <code className="monospace">npm install && npm run build</code>, and expose port 3000.
-          </p>
         </div>
       </section>
     </div>
   );
 }
-
-
