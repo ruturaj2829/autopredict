@@ -66,8 +66,11 @@ COPY requirements.txt ./
 RUN mkdir -p artifacts
 
 # Expose port (Railway will set PORT automatically)
+# Use a default but Railway will override with $PORT
 ENV PORT=8000
 EXPOSE 8000
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
 # Health check - use simple root endpoint that doesn't require models
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \

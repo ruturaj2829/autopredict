@@ -144,7 +144,19 @@ def options_score_vehicle() -> Response:
 @app.get("/")
 def root() -> Dict[str, str]:
     """Health check endpoint that doesn't require models."""
-    return {"status": "ok", "service": "AutoPredict Backend", "version": "1.0.0"}
+    return {
+        "status": "ok",
+        "service": "AutoPredict Backend",
+        "version": "1.0.0",
+        "message": "Service is running"
+    }
+
+
+@app.get("/docs")
+def docs_redirect():
+    """Ensure /docs endpoint exists for Railway health checks."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")
