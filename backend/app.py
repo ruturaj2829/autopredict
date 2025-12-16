@@ -212,6 +212,50 @@ def health() -> Dict[str, Any]:
     }
 
 
+def _generate_demo_response(normalized: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate demo risk response when model artifacts are unavailable."""
+    rf_features = normalized.get("rf_features", {})
+    vehicle_id = normalized.get("vehicle_id", "DEMO-VEH-001")
+    timestamp = normalized.get("timestamp", datetime.now(timezone.utc).isoformat())
+    
+    # Mock risk scores based on input features
+    engine_temp = float(rf_features.get("engine_temp_mean", 100.0))
+    battery_voltage = float(rf_features.get("battery_voltage_min", 12.5))
+    brake_wear = float(rf_features.get("brake_wear_current", 50.0))
+    dtc_count = int(rf_features.get("dtc_count", 0))
+    
+    # Simple heuristic-based risk scoring for demo
+    rf_prob = min(0.95, max(0.1, (engine_temp - 90) / 30.0 + dtc_count * 0.1))
+    lstm_conf = min(0.9, max(0.2, (12.5 - battery_voltage) / 2.0 + brake_wear / 200.0))
+    ensemble_score = 0.7 * rf_prob + 0.3 * lstm_conf
+    
+    risk_level = "HIGH" if ensemble_score > 0.7 else "MEDIUM" if ensemble_score > 0.4 else "LOW"
+    urgency = "IMMEDIATE" if ensemble_score > 0.8 else "SOON" if ensemble_score > 0.5 else "SCHEDULED"
+    
+    return {
+        "event_type": "PREDICTIVE_RISK_SIGNAL",
+        "vehicle_id": vehicle_id,
+        "risk_level": risk_level,
+        "rf_fault_prob": round(rf_prob, 4),
+        "lstm_degradation_score": round(lstm_conf, 4),
+        "ensemble_risk_score": round(ensemble_score, 4),
+        "immediate_risk_score": round(ensemble_score, 4),
+        "failure_probability_next_7_days": round(min(0.95, ensemble_score * 1.2), 4),
+        "failure_probability_next_30_days": round(min(0.98, ensemble_score * 1.5), 4),
+        "estimated_days_to_failure": max(1, int(14 * (1 - ensemble_score))),
+        "affected_component": "Engine" if engine_temp > 105 else "Battery" if battery_voltage < 12.0 else "Brakes" if brake_wear > 70 else "General",
+        "confidence": round(ensemble_score * 0.9, 4),
+        "timestamp": timestamp,
+        "urgency": urgency,
+        "context": {
+            "demo_mode": True,
+            "message": "Model artifacts not deployed - using heuristic-based demo response",
+            "usage_pattern": normalized.get("latest_reading", {}).get("usage_pattern", "mixed"),
+            "dtc": normalized.get("latest_reading", {}).get("dtc", []),
+        },
+    }
+
+
 @app.post("/api/v1/telemetry/risk")
 def score_vehicle(payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
@@ -220,50 +264,16 @@ def score_vehicle(payload: Dict[str, Any]) -> Dict[str, Any]:
         event = inference_service.score(normalized)
         return event
     except HTTPException as exc:
-        # Re-raise HTTP exceptions (like 503 for missing artifacts)
+        # If it's a 503 (artifacts missing), return demo response instead
+        if exc.status_code == 503 and "artifacts" in str(exc.detail).lower():
+            LOGGER.info("Artifacts missing, returning demo response")
+            return _generate_demo_response(normalized)
+        # Re-raise other HTTP exceptions
         raise exc
     except FileNotFoundError as exc:
         # Return demo response when artifacts are missing
         LOGGER.info("Artifacts missing, returning demo response")
-        rf_features = normalized.get("rf_features", {})
-        vehicle_id = normalized.get("vehicle_id", "DEMO-VEH-001")
-        timestamp = normalized.get("timestamp", datetime.now(timezone.utc).isoformat())
-        
-        # Mock risk scores based on input features
-        engine_temp = float(rf_features.get("engine_temp_mean", 100.0))
-        battery_voltage = float(rf_features.get("battery_voltage_min", 12.5))
-        brake_wear = float(rf_features.get("brake_wear_current", 50.0))
-        
-        # Simple heuristic-based risk scoring for demo
-        rf_prob = min(0.95, max(0.1, (engine_temp - 90) / 30.0))
-        lstm_conf = min(0.9, max(0.2, (12.5 - battery_voltage) / 2.0))
-        ensemble_score = 0.7 * rf_prob + 0.3 * lstm_conf
-        
-        risk_level = "HIGH" if ensemble_score > 0.7 else "MEDIUM" if ensemble_score > 0.4 else "LOW"
-        urgency = "IMMEDIATE" if ensemble_score > 0.8 else "SOON" if ensemble_score > 0.5 else "SCHEDULED"
-        
-        return {
-            "event_type": "PREDICTIVE_RISK_SIGNAL",
-            "vehicle_id": vehicle_id,
-            "risk_level": risk_level,
-            "rf_fault_prob": rf_prob,
-            "lstm_degradation_score": lstm_conf,
-            "ensemble_risk_score": ensemble_score,
-            "immediate_risk_score": ensemble_score,
-            "failure_probability_next_7_days": min(0.95, ensemble_score * 1.2),
-            "failure_probability_next_30_days": min(0.98, ensemble_score * 1.5),
-            "estimated_days_to_failure": max(1, int(14 * (1 - ensemble_score))),
-            "affected_component": "Engine" if engine_temp > 105 else "Battery" if battery_voltage < 12.0 else "General",
-            "confidence": ensemble_score * 0.9,
-            "timestamp": timestamp,
-            "urgency": urgency,
-            "context": {
-                "demo_mode": True,
-                "message": "Model artifacts not deployed - using heuristic-based demo response",
-                "usage_pattern": normalized.get("latest_reading", {}).get("usage_pattern", "mixed"),
-                "dtc": normalized.get("latest_reading", {}).get("dtc", []),
-            },
-        }
+        return _generate_demo_response(normalized)
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
