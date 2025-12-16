@@ -1,0 +1,120 @@
+Create a professional system architecture diagram for an "Agentic AI-Driven Predictive Maintenance & Quality Intelligence Platform" that fits perfectly in a 16:9 slide (1920x1080px).
+
+LAYOUT STRUCTURE (Top to Bottom):
+
+[CLIENT LAYER - Top]
+- Web Dashboard (Next.js/React)
+- Mobile App (React Native) [optional, dashed]
+- IoT Devices (Vehicle Telemetry Sensors)
+
+[API GATEWAY LAYER]
+- API Gateway (FastAPI, Rate Limiting, Auth)
+- Load Balancer
+
+[CORE SERVICES LAYER - Main Section, Horizontal]
+Left to Right:
+1. Orchestration Service (LangGraph)
+   - Master Agent
+   - Worker Agents (Data Analysis, Diagnosis, Voice, Scheduling, Feedback, Manufacturing)
+   - Shadow Safety Twin
+2. ML Inference Service (Hybrid RF + LSTM)
+3. UEBA Engine (Isolation Forest + Intent Graph)
+4. Scheduling Optimizer (OR-Tools)
+5. Voice AI Service (Azure TTS + Whisper + Sentiment)
+6. Manufacturing Analytics (KMeans + RCA/CAPA)
+
+[DATA LAYER - Bottom]
+- TimescaleDB (Time-Series)
+- PostgreSQL (Relational)
+- Elasticsearch (Search/Logs)
+- Azure SQL (Data Warehouse)
+- Vector DB FAISS (Knowledge Base)
+
+[INFRASTRUCTURE - Between Services & Data]
+- Apache Kafka (Streaming)
+- WebSocket Server
+
+[EXTERNAL SERVICES - Right Side]
+- Azure Cognitive Services
+- Cloud Storage (Azure Blob)
+- Monitoring (Prometheus/Grafana)
+
+[SECURITY - Perimeter]
+- UEBA Guard
+- API Authentication (OAuth2/JWT)
+- Network Security (VPC/Firewall)
+- Audit Logging
+
+DATA FLOWS (Show with arrows):
+1. IoT → Kafka → TimescaleDB (Telemetry)
+2. Telemetry → ML Inference → Orchestration (Risk Scoring)
+3. Orchestration → Worker Agents → External Services (Actions)
+4. Agents → UEBA Guard → Decision (Safety Checks)
+5. Manufacturing Events → Analytics → PostgreSQL (RCA/CAPA)
+6. All Services → Elasticsearch (Audit)
+
+COLOR SCHEME:
+- Blue: Data/Storage
+- Green: ML/AI
+- Orange: Services/APIs
+- Purple: Security
+- Gray: Infrastructure
+
+STYLE:
+- Clean, modern design
+- Grouped components in containers
+- Clear labels (10pt+ font)
+- Standard cloud icons
+- Professional color palette
+- Adequate whitespace
+- 10% margins on all sides
+
+KEY ANNOTATIONS (Small callouts):
+- "Hybrid ML: RF (pattern) + LSTM (temporal)"
+- "LangGraph: Stateful orchestration"
+- "Shadow Twin: Safety validation"
+- "UEBA: Anomaly + Intent monitoring"
+
+OUTPUT: High-resolution image (PNG/SVG) suitable for presentation, 16:9 aspect ratio, clear and professional.
+
+---
+
+## ADDITIONAL REQUIREMENTS (Based on Form):
+
+DETAIL LEVEL: Balance - Show service names + key subcomponents for critical services (Orchestration agents, ML models, UEBA components)
+
+COMMUNICATION PATTERNS (Show with different arrow styles):
+- Solid Blue: Synchronous REST API calls
+- Dashed Green: Asynchronous Kafka messaging
+- Wavy Orange: WebSocket real-time communication
+- Dotted Gray: Batch data transfers
+
+USER ROLES (Annotate in Client Layer):
+- Fleet Manager (Web Dashboard)
+- Technician (Mobile App)
+- Quality Engineer (Manufacturing Dashboard)
+- System Admin (Admin Panel)
+- Data Scientist (ML Ops)
+
+DEPLOYMENT ENVIRONMENT (Show as top layer):
+- Azure Cloud (container)
+  - Region 1: East US (Primary AKS)
+  - Region 2: West Europe (Secondary AKS)
+- Kubernetes orchestration symbols
+- Application Gateway (Load Balancer)
+- CI/CD: GitHub Actions → ACR → AKS
+
+PERFORMANCE/SCALABILITY ANNOTATIONS:
+- ⚡ "Real-time: <100ms inference"
+- 📊 "Scale: 10K+ events/sec"
+- 🔄 "Auto-scaling: K8s HPA"
+- 💾 "Caching: Redis"
+
+SECURITY HIGHLIGHTS (Red/Purple):
+- UEBA Guard (Red highlight, prominent)
+- Shadow Safety Twin (Red callout)
+- API Gateway Auth (Purple border)
+- Network Security VPC (Dashed purple)
+- "TLS 1.3: All encrypted"
+- "Audit: Immutable logs"
+
