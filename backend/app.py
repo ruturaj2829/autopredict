@@ -31,12 +31,74 @@ app.add_middleware(
 )
 
 ARTIFACTS_DIR = Path("artifacts")
-INFERENCE_SERVICE = HybridInferenceService(ARTIFACTS_DIR)
-UEBA_ENGINE = UEBAEngine()
-ANALYTICS = ManufacturingAnalytics()
-SCHEDULER = SchedulingOptimizer()
-SCHEDULER_GUARD = UEBAGuard(UEBA_ENGINE, subject_id="scheduling-agent", allowed_operations=["optimize"])
-ORCHESTRATION_GRAPH = build_orchestration_graph()
+
+# Lazy initialization to avoid startup failures if artifacts are missing
+_INFERENCE_SERVICE: HybridInferenceService | None = None
+_UEBA_ENGINE: UEBAEngine | None = None
+_ANALYTICS: ManufacturingAnalytics | None = None
+_SCHEDULER: SchedulingOptimizer | None = None
+_SCHEDULER_GUARD: UEBAGuard | None = None
+_ORCHESTRATION_GRAPH = None
+
+
+def get_inference_service() -> HybridInferenceService:
+    """Lazy-load inference service, creating it if needed."""
+    global _INFERENCE_SERVICE
+    if _INFERENCE_SERVICE is None:
+        try:
+            _INFERENCE_SERVICE = HybridInferenceService(ARTIFACTS_DIR)
+            LOGGER.info("HybridInferenceService initialized successfully")
+        except FileNotFoundError as e:
+            LOGGER.warning("Model artifacts not found, inference service unavailable: %s", e)
+            raise HTTPException(
+                status_code=503,
+                detail="Model artifacts not available. Please ensure artifacts are deployed."
+            ) from e
+    return _INFERENCE_SERVICE
+
+
+def get_ueba_engine() -> UEBAEngine:
+    """Lazy-load UEBA engine."""
+    global _UEBA_ENGINE
+    if _UEBA_ENGINE is None:
+        _UEBA_ENGINE = UEBAEngine()
+    return _UEBA_ENGINE
+
+
+def get_analytics() -> ManufacturingAnalytics:
+    """Lazy-load manufacturing analytics."""
+    global _ANALYTICS
+    if _ANALYTICS is None:
+        _ANALYTICS = ManufacturingAnalytics()
+    return _ANALYTICS
+
+
+def get_scheduler() -> SchedulingOptimizer:
+    """Lazy-load scheduler."""
+    global _SCHEDULER
+    if _SCHEDULER is None:
+        _SCHEDULER = SchedulingOptimizer()
+    return _SCHEDULER
+
+
+def get_scheduler_guard() -> UEBAGuard:
+    """Lazy-load scheduler guard."""
+    global _SCHEDULER_GUARD
+    if _SCHEDULER_GUARD is None:
+        _SCHEDULER_GUARD = UEBAGuard(
+            get_ueba_engine(),
+            subject_id="scheduling-agent",
+            allowed_operations=["optimize"]
+        )
+    return _SCHEDULER_GUARD
+
+
+def get_orchestration_graph():
+    """Lazy-load orchestration graph."""
+    global _ORCHESTRATION_GRAPH
+    if _ORCHESTRATION_GRAPH is None:
+        _ORCHESTRATION_GRAPH = build_orchestration_graph()
+    return _ORCHESTRATION_GRAPH
 
 
 def _normalize_telemetry_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -71,11 +133,29 @@ def options_score_vehicle() -> Response:
     return Response(status_code=200)
 
 
+@app.get("/")
+def root() -> Dict[str, str]:
+    """Health check endpoint that doesn't require models."""
+    return {"status": "ok", "service": "AutoPredict Backend", "version": "1.0.0"}
+
+
+@app.get("/health")
+def health() -> Dict[str, Any]:
+    """Detailed health check endpoint."""
+    artifacts_exist = (ARTIFACTS_DIR / "model_metadata.json").exists()
+    return {
+        "status": "ok",
+        "artifacts_available": artifacts_exist,
+        "service": "AutoPredict Backend",
+    }
+
+
 @app.post("/api/v1/telemetry/risk")
 def score_vehicle(payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
         normalized = _normalize_telemetry_payload(payload)
-        event = INFERENCE_SERVICE.score(normalized)
+        inference_service = get_inference_service()
+        event = inference_service.score(normalized)
         return event
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -93,7 +173,7 @@ def ueba_ingest(records: List[Dict[str, Any]]) -> Dict[str, Any]:
         )
         for record in records
     ]
-    return UEBA_ENGINE.ingest(parsed)
+    return get_ueba_engine().ingest(parsed)
 
 
 @app.options("/api/v1/scheduler/optimize")
@@ -132,11 +212,14 @@ def schedule_jobs(payload: Dict[str, Any]) -> Dict[str, Any]:
         "high_risk_jobs": float(high_risk),
     }
     metadata = {"operation": "optimize"}
-    guard_result = SCHEDULER_GUARD.guard_call(
+    scheduler = get_scheduler()
+    scheduler_guard = get_scheduler_guard()
+    
+    guard_result = scheduler_guard.guard_call(
         operation="optimize",
         features=features,
         metadata=metadata,
-        func=SCHEDULER.optimize,
+        func=scheduler.optimize,
         jobs=jobs,
         slots=slots,
     )
@@ -144,7 +227,7 @@ def schedule_jobs(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not guard_result["guard_decision"]["allowed"]:
         raise HTTPException(status_code=403, detail=guard_result)
 
-    schedule = SCHEDULER.optimize(jobs, slots)
+    schedule = scheduler.optimize(jobs, slots)
     return {
         "schedule": [asdict(assignment) for assignment in schedule],
         "ueba_guard": guard_result["guard_decision"],
@@ -160,13 +243,14 @@ def options_manufacturing_insights() -> Response:
 @app.post("/api/v1/manufacturing/analytics")
 def manufacturing_insights(events: List[Dict]) -> Dict[str, object]:
     parsed = [ManufacturingEvent(**event) for event in events]
-    clusters = ANALYTICS.fit_clusters(parsed)
-    heatmap_path = ANALYTICS.plot_heatmap(clusters)
-    explorer_payload = ANALYTICS.export_to_azure_data_explorer(clusters)
+    analytics = get_analytics()
+    clusters = analytics.fit_clusters(parsed)
+    heatmap_path = analytics.plot_heatmap(clusters)
+    explorer_payload = analytics.export_to_azure_data_explorer(clusters)
     # Persist a cluster-level RCA summary for later review / audit.
     summary_path = Path("manufacturing_cluster_summary.json")
-    ANALYTICS.save_cluster_summary(clusters, summary_path)
-    capa = ANALYTICS.generate_capa_recommendations(clusters)
+    analytics.save_cluster_summary(clusters, summary_path)
+    capa = analytics.generate_capa_recommendations(clusters)
     return {
         "clusters": clusters.to_dict(orient="records"),
         "heatmap": str(heatmap_path),
@@ -187,7 +271,8 @@ def run_orchestration(event: Dict[str, Any]) -> Dict[str, Any]:
     if event.get("event_type") != "PREDICTIVE_RISK_SIGNAL":
         raise HTTPException(status_code=400, detail="Unsupported event_type for orchestration")
     try:
-        state = ORCHESTRATION_GRAPH.invoke({"event": event})
+        graph = get_orchestration_graph()
+        state = graph.invoke({"event": event})
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {
