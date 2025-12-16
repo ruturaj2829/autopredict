@@ -65,20 +65,18 @@ COPY requirements.txt ./
 # Create artifacts directory if needed
 RUN mkdir -p artifacts
 
-# Expose port
+# Expose port (Railway will set PORT automatically)
 ENV PORT=8000
-EXPOSE $PORT
+EXPOSE 8000
 
 # Health check - use simple root endpoint that doesn't require models
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:$PORT/ || exit 1
 
-# Start command with detailed logging
-CMD echo "=== Starting FastAPI application ===" && \
-    echo "Python version: $(python --version)" && \
-    echo "Working directory: $(pwd)" && \
-    echo "Port: $PORT" && \
-    echo "Available modules:" && \
-    ls -la backend/ models/ 2>/dev/null | head -10 && \
-    uvicorn main:app --host 0.0.0.0 --port $PORT --log-level info
+# Copy startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Start command using startup script
+CMD ["/app/start.sh"]
 

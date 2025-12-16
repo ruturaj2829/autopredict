@@ -1,0 +1,17 @@
+# Nixpacks configuration for Railway
+# This ensures Railway uses the correct health check path
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT --log-level info"
+
+[healthcheck]
+path = "/"
+interval = 30
+timeout = 10
+retries = 3
+

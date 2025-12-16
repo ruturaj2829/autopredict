@@ -21,6 +21,14 @@ LOGGER = logging.getLogger("backend.app")
 
 app = FastAPI(title="Predictive Maintenance Platform", version="1.0.0")
 
+
+@app.on_event("startup")
+async def startup_event():
+    """Log startup completion."""
+    LOGGER.info("FastAPI application startup complete")
+    LOGGER.info("App is ready to accept requests")
+    LOGGER.info("Health check endpoints: GET /, GET /health")
+
 # CORS so that the Next.js frontend (localhost:3000) can call the backend.
 app.add_middleware(
     CORSMiddleware,
