@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 from dataclasses import asdict
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from dateutil.parser import isoparse
 
 from models.hybrid_inference_service import HybridInferenceService
@@ -46,6 +47,19 @@ app.add_middleware(
     expose_headers=["*"],
     max_age=3600,
 )
+
+# Additional CORS middleware to ensure headers are always set
+class CORSMiddlewareOverride(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Expose-Headers"] = "*"
+        response.headers["Access-Control-Max-Age"] = "3600"
+        return response
+
+app.add_middleware(CORSMiddlewareOverride)
 
 
 @app.on_event("startup")
