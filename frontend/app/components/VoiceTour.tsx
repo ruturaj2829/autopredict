@@ -277,8 +277,7 @@ export default function VoiceTour() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: "rgba(0, 0, 0, 0.75)",
-            backdropFilter: "blur(4px)",
+            background: "rgba(0, 0, 0, 0.4)",
             zIndex: 9998,
             pointerEvents: "none",
             transition: "all 0.3s ease",
@@ -484,6 +483,8 @@ export default function VoiceTour() {
           box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.2), 0 20px 60px rgba(102, 126, 234, 0.4) !important;
           transform: scale(1.02);
           background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%) !important;
+          z-index: 10001 !important;
+          position: relative !important;
         }
 
         .tour-highlight-button {
@@ -492,6 +493,8 @@ export default function VoiceTour() {
           border-radius: 999px;
           box-shadow: 0 0 0 6px rgba(102, 126, 234, 0.2), 0 8px 24px rgba(102, 126, 234, 0.5) !important;
           transform: scale(1.05);
+          z-index: 10001 !important;
+          position: relative !important;
         }
 
         .tour-highlight-graph {
@@ -500,6 +503,8 @@ export default function VoiceTour() {
           border-radius: 1rem;
           box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.2), 0 20px 60px rgba(102, 126, 234, 0.4) !important;
           transform: scale(1.02);
+          z-index: 10001 !important;
+          position: relative !important;
         }
 
         .tour-highlight-section {
@@ -507,6 +512,8 @@ export default function VoiceTour() {
           outline-offset: 12px;
           border-radius: 1rem;
           box-shadow: 0 0 0 12px rgba(102, 126, 234, 0.15), 0 25px 80px rgba(102, 126, 234, 0.3) !important;
+          z-index: 10001 !important;
+          position: relative !important;
         }
 
         @keyframes highlightPulse {
