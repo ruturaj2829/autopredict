@@ -1,4 +1,4 @@
-# Exclude from Railway build to speed up deployment
+# Exclude from Docker build context
 venv/
 __pycache__/
 *.pyc
@@ -37,3 +37,6 @@ tests/
 *~
 .DS_Store
 Thumbs.db
+.railwayignore
+railway.json
+
