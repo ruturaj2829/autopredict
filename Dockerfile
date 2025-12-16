@@ -65,10 +65,9 @@ COPY requirements.txt ./
 # Create artifacts directory if needed
 RUN mkdir -p artifacts
 
-# Expose port (Railway will set PORT automatically)
-# Use a default but Railway will override with $PORT
-ENV PORT=8000
-EXPOSE 8000
+# Expose port (Railway will set PORT automatically via environment variable)
+# Railway HTTP Proxy should be configured to use port 8080
+EXPOSE 8080
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
