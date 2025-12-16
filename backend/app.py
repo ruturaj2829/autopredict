@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -29,10 +30,19 @@ async def startup_event():
     LOGGER.info("App is ready to accept requests")
     LOGGER.info("Health check endpoints: GET /, GET /health")
 
-# CORS so that the Next.js frontend (localhost:3000) can call the backend.
+# CORS so that the Next.js frontend (localhost:3000 and Vercel) can call the backend.
+# Get allowed origins from environment or use defaults
+FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+if FRONTEND_URL:
+    ALLOWED_ORIGINS.append(FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
