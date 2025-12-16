@@ -167,17 +167,18 @@ def _normalize_telemetry_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     raise ValueError("Unsupported telemetry payload format")
 
 
-@app.options("/api/v1/telemetry/risk")
-@app.options("/api/v1/{path:path}")
-def options_handler(path: str = None) -> Response:
-    """Handle CORS preflight for all endpoints."""
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str) -> Response:
+    """Handle CORS preflight for ALL endpoints - catch-all handler."""
     return Response(
         status_code=200,
         headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+            "Access-Control-Expose-Headers": "*",
             "Access-Control-Max-Age": "3600",
+            "Access-Control-Allow-Credentials": "true",
         }
     )
 
