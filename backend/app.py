@@ -22,22 +22,13 @@ LOGGER = logging.getLogger("backend.app")
 
 app = FastAPI(title="Predictive Maintenance Platform", version="1.0.0")
 
-
-@app.on_event("startup")
-async def startup_event():
-    """Log startup completion."""
-    LOGGER.info("FastAPI application startup complete")
-    LOGGER.info("App is ready to accept requests")
-    LOGGER.info("Health check endpoints: GET /, GET /health")
-
-# CORS so that the Next.js frontend (localhost:3000 and Vercel) can call the backend.
+# CORS MUST be added BEFORE other middleware and routes
 # Get allowed origins from environment or use defaults
 FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://autopredict.vercel.app",  # Vercel production frontend
-    "https://autopredict-*.vercel.app",  # Vercel preview deployments
 ]
 if FRONTEND_URL:
     ALLOWED_ORIGINS.append(FRONTEND_URL)
@@ -45,17 +36,25 @@ if FRONTEND_URL:
 # Log CORS configuration for debugging
 LOGGER.info("CORS allowed origins: %s", ALLOWED_ORIGINS)
 
-# More permissive CORS for development - can be restricted in production
-# For now, allow all origins to ensure it works
+# CORS middleware - MUST be added first, before any routes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins - change to ALLOWED_ORIGINS in production
-    allow_credentials=False,  # Set to True if using cookies/auth
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
     max_age=3600,
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Log startup completion."""
+    LOGGER.info("FastAPI application startup complete")
+    LOGGER.info("App is ready to accept requests")
+    LOGGER.info("Health check endpoints: GET /, GET /health")
+    LOGGER.info("CORS enabled for all origins")
 
 ARTIFACTS_DIR = Path("artifacts")
 
@@ -155,14 +154,15 @@ def _normalize_telemetry_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @app.options("/api/v1/telemetry/risk")
-def options_score_vehicle() -> Response:
-    """Handle CORS preflight for telemetry risk endpoint."""
+@app.options("/api/v1/{path:path}")
+def options_handler(path: str = None) -> Response:
+    """Handle CORS preflight for all endpoints."""
     return Response(
         status_code=200,
         headers={
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
             "Access-Control-Max-Age": "3600",
         }
     )
@@ -289,18 +289,6 @@ def schedule_jobs(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-@app.options("/api/v1/manufacturing/analytics")
-def options_manufacturing_insights() -> Response:
-    """Handle CORS preflight for manufacturing analytics endpoint."""
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Max-Age": "3600",
-        }
-    )
 
 
 @app.post("/api/v1/manufacturing/analytics")
@@ -323,18 +311,6 @@ def manufacturing_insights(events: List[Dict]) -> Dict[str, object]:
     }
 
 
-@app.options("/api/v1/orchestration/run")
-def options_orchestration() -> Response:
-    """Handle CORS preflight for orchestration endpoint."""
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Max-Age": "3600",
-        }
-    )
 
 
 @app.post("/api/v1/orchestration/run")
