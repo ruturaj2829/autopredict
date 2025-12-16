@@ -1,0 +1,14 @@
+[
+  {
+    "cluster": 0,
+    "vehicles": 1,
+    "avg_lead_time": 5.0,
+    "top_component": "Brakes"
+  },
+  {
+    "cluster": 1,
+    "vehicles": 1,
+    "avg_lead_time": 7.0,
+    "top_component": "Engine"
+  }
+]

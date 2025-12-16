@@ -1,0 +1,115 @@
+{
+  "timestamp": "2025-12-14T09:27:32.093348Z",
+  "overall_status": "FAIL",
+  "results": [
+    {
+      "name": "FastAPI backend",
+      "status": "PASS",
+      "detail": "/docs responded with 200",
+      "metadata": {
+        "duration_sec": 0.008
+      }
+    },
+    {
+      "name": "Hybrid inference service",
+      "status": "PASS",
+      "detail": "Telemetry risk endpoint returned 200",
+      "metadata": {
+        "event_type": "PREDICTIVE_RISK_SIGNAL",
+        "vehicle_id": "HEALTH-CHECK-001",
+        "risk_level": "HIGH",
+        "rf_fault_prob": 0.755,
+        "lstm_degradation_score": 0.6466509103775024,
+        "ensemble_risk_score": 0.7224952731132507,
+        "immediate_risk_score": 0.7224952731132507,
+        "failure_probability_next_7_days": 0.7439204058008542,
+        "failure_probability_next_30_days": 0.8683309918455737,
+        "estimated_days_to_failure": 5,
+        "affected_component": "Electrical",
+        "confidence": 0.7116603641510009,
+        "timestamp": "2025-12-14T09:27:32.101832Z",
+        "urgency": 0.6466509103775024,
+        "context": {
+          "usage_pattern": "city",
+          "dtc": [
+            "P0420"
+          ],
+          "risk_score": 0.7224952731132507,
+          "urgency_signal": 0.6466509103775024,
+          "ensemble_score": 0.7224952731132507,
+          "window_size": 60,
+          "failure_probabilities": {
+            "next_7_days": 0.7439204058008542,
+            "next_30_days": 0.8683309918455737
+          }
+        },
+        "duration_sec": 0.169
+      }
+    },
+    {
+      "name": "UEBA engine",
+      "status": "FAIL",
+      "detail": "UEBA ingest returned 500",
+      "metadata": {
+        "duration_sec": 0.007
+      }
+    },
+    {
+      "name": "Scheduling optimizer",
+      "status": "FAIL",
+      "detail": "Scheduler returned 500",
+      "metadata": {
+        "duration_sec": 0.009
+      }
+    },
+    {
+      "name": "Manufacturing analytics",
+      "status": "PASS",
+      "detail": "Manufacturing analytics returned 200",
+      "metadata": {
+        "heatmap": "manufacturing_heatmap.html",
+        "duration_sec": 0.06
+      }
+    },
+    {
+      "name": "Elasticsearch cluster",
+      "status": "PASS",
+      "detail": "Elasticsearch health status: green",
+      "metadata": {
+        "duration_sec": 0.017
+      }
+    },
+    {
+      "name": "TimescaleDB",
+      "status": "FAIL",
+      "detail": "DSN missing or psycopg2 not installed",
+      "metadata": {
+        "duration_sec": 0.0
+      }
+    },
+    {
+      "name": "Azure PostgreSQL",
+      "status": "FAIL",
+      "detail": "AZURE_POSTGRES_DSN missing or psycopg2 not installed",
+      "metadata": {
+        "duration_sec": 0.0
+      }
+    },
+    {
+      "name": "Azure SQL Database",
+      "status": "FAIL",
+      "detail": "AZURE_SQL_CONNECTION missing",
+      "metadata": {
+        "duration_sec": 0.0
+      }
+    },
+    {
+      "name": "Azure Speech Service",
+      "status": "FAIL",
+      "detail": "Speech key/region not set",
+      "metadata": {
+        "duration_sec": 0.0
+      }
+    }
+  ]
+}
