@@ -36,6 +36,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "").strip()
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://autopredict.vercel.app",  # Vercel production frontend
 ]
 if FRONTEND_URL:
     ALLOWED_ORIGINS.append(FRONTEND_URL)
