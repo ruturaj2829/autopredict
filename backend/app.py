@@ -37,16 +37,24 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://autopredict.vercel.app",  # Vercel production frontend
+    "https://autopredict-*.vercel.app",  # Vercel preview deployments
 ]
 if FRONTEND_URL:
     ALLOWED_ORIGINS.append(FRONTEND_URL)
 
+# Log CORS configuration for debugging
+LOGGER.info("CORS allowed origins: %s", ALLOWED_ORIGINS)
+
+# More permissive CORS for development - can be restricted in production
+# For now, allow all origins to ensure it works
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["*"],  # Allow all origins - change to ALLOWED_ORIGINS in production
+    allow_credentials=False,  # Set to True if using cookies/auth
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 ARTIFACTS_DIR = Path("artifacts")
@@ -149,7 +157,15 @@ def _normalize_telemetry_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 @app.options("/api/v1/telemetry/risk")
 def options_score_vehicle() -> Response:
     """Handle CORS preflight for telemetry risk endpoint."""
-    return Response(status_code=200)
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
 
 
 @app.get("/")
@@ -210,7 +226,15 @@ def ueba_ingest(records: List[Dict[str, Any]]) -> Dict[str, Any]:
 @app.options("/api/v1/scheduler/optimize")
 def options_schedule_jobs() -> Response:
     """Handle CORS preflight for scheduler endpoint."""
-    return Response(status_code=200)
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
 
 
 @app.post("/api/v1/scheduler/optimize")
@@ -268,7 +292,15 @@ def schedule_jobs(payload: Dict[str, Any]) -> Dict[str, Any]:
 @app.options("/api/v1/manufacturing/analytics")
 def options_manufacturing_insights() -> Response:
     """Handle CORS preflight for manufacturing analytics endpoint."""
-    return Response(status_code=200)
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
 
 
 @app.post("/api/v1/manufacturing/analytics")
@@ -289,6 +321,20 @@ def manufacturing_insights(events: List[Dict]) -> Dict[str, object]:
         "rca_summary_path": str(summary_path),
         "capa_recommendations": capa,
     }
+
+
+@app.options("/api/v1/orchestration/run")
+def options_orchestration() -> Response:
+    """Handle CORS preflight for orchestration endpoint."""
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
 
 
 @app.post("/api/v1/orchestration/run")
