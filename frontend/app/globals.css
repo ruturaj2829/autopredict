@@ -7,8 +7,10 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f5f5f7;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 50%, #f0f4f8 100%);
+  background-attachment: fixed;
   color: #0f172a;
+  min-height: 100vh;
 }
 
 a {
@@ -21,11 +23,44 @@ a:hover {
 }
 
 .card {
-  border-radius: 0.75rem;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: #ffffff;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+  padding: 1.5rem 2rem;
+  box-shadow: 
+    0 4px 16px rgba(15, 23, 42, 0.08),
+    0 1px 4px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .card h3 {
@@ -48,8 +83,23 @@ a:hover {
 }
 
 .badge-pill-strong {
-  background: rgba(22, 163, 74, 0.12);
-  border-color: rgba(21, 128, 61, 0.6);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  border-color: rgba(102, 126, 234, 0.4);
+  color: #667eea;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.badge-pill {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(148, 163, 184, 0.4);
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.badge-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .btn {
@@ -67,14 +117,48 @@ a:hover {
 }
 
 .btn-primary {
-  background: linear-gradient(to right, #22c55e, #0ea5e9);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-color: transparent;
-  color: #0b1120;
-  font-weight: 500;
+  color: white;
+  font-weight: 600;
+  box-shadow: 
+    0 4px 16px rgba(102, 126, 234, 0.4),
+    0 2px 8px rgba(102, 126, 234, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-primary:hover::after {
+  width: 400px;
+  height: 400px;
 }
 
 .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 24px rgba(102, 126, 234, 0.5),
+    0 4px 12px rgba(102, 126, 234, 0.3);
   filter: brightness(1.05);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 2px 8px rgba(102, 126, 234, 0.4),
+    0 1px 4px rgba(102, 126, 234, 0.2);
 }
 
 .grid {
@@ -93,17 +177,59 @@ a:hover {
 .code-block {
   max-height: 340px;
   overflow: auto;
-  font-size: 0.8rem;
-  line-height: 1.4;
-  padding: 0.75rem 0.9rem;
-  border-radius: 0.6rem;
-  background: #f3f4f6;
-  border: 1px solid rgba(148, 163, 184, 0.7);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.1);
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+}
+
+.code-block::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.code-block::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 4px;
+}
+
+.code-block::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.5);
+  border-radius: 4px;
+}
+
+.code-block::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.7);
 }
 
 .section-title {
-  margin: 2rem 0 0.5rem;
-  font-size: 1.25rem;
+  margin: 2.5rem 0 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #1e293b 0%, #475569 50%, #64748b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.section-title::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 2px;
 }
 
 .section-subtitle {
@@ -187,8 +313,12 @@ section {
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 
+    0 12px 40px rgba(15, 23, 42, 0.12),
+    0 4px 12px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border-color: rgba(102, 126, 234, 0.3);
 }
 
 /* Button enhancements */
@@ -274,9 +404,26 @@ html {
 
 /* Section spacing */
 section {
-  margin-bottom: 3rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  margin-bottom: 4rem;
+  padding: 2rem;
+  padding-bottom: 3rem;
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 
+    0 4px 16px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+section:hover {
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 
+    0 8px 32px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
 }
 
 section:last-child {
