@@ -268,47 +268,30 @@ export default function VoiceTour() {
         </button>
       )}
 
-      {isActive && showOverlay && (
-        <div
-          className="tour-overlay"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.4)",
-            zIndex: 9998,
-            pointerEvents: "none",
-            transition: "all 0.3s ease",
-          }}
-        />
-      )}
-
       {isActive && (
         <div
           className="tour-card"
           style={{
             position: "fixed",
-            bottom: "2rem",
-            left: "50%",
-            transform: "translateX(-50%)",
+            top: "2rem",
+            right: "2rem",
             zIndex: 9999,
             background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
             borderRadius: "1.5rem",
             padding: "2rem",
-            maxWidth: "700px",
-            width: "90%",
-            boxShadow: "0 25px 80px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)",
-            animation: "slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+            maxWidth: "420px",
+            width: "calc(100% - 4rem)",
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(102, 126, 234, 0.1), 0 8px 32px rgba(102, 126, 234, 0.2)",
+            animation: "slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
             border: "1px solid rgba(102, 126, 234, 0.2)",
+            backdropFilter: "blur(10px)",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "1.5rem" }}>
             <div>
               <h3 style={{ 
                 margin: 0, 
-                fontSize: "1.5rem", 
+                fontSize: "1.3rem", 
                 fontWeight: 700, 
                 background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                 WebkitBackgroundClip: "text",
@@ -367,9 +350,9 @@ export default function VoiceTour() {
           </div>
 
           <p style={{ 
-            margin: "0 0 2rem", 
-            fontSize: "1.05rem", 
-            lineHeight: "1.8", 
+            margin: "0 0 1.5rem", 
+            fontSize: "0.95rem", 
+            lineHeight: "1.7", 
             color: "#334155",
             fontWeight: 400,
           }}>
@@ -450,13 +433,13 @@ export default function VoiceTour() {
       )}
 
       <style jsx>{`
-        @keyframes slideUp {
+        @keyframes slideInRight {
           from {
-            transform: translateX(-50%) translateY(30px);
+            transform: translateX(30px);
             opacity: 0;
           }
           to {
-            transform: translateX(-50%) translateY(0);
+            transform: translateX(0);
             opacity: 1;
           }
         }
