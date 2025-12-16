@@ -2,10 +2,18 @@
 
 import { useState } from "react";
 
+// Get backend URL from environment variable
+// In production (Vercel), this should be set to your Railway backend URL
 const BACKEND_URL =
-  typeof process !== "undefined"
-    ? process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"
-    : "http://localhost:8080";
+  typeof window !== "undefined"
+    ? (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080")
+    : process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+
+// Debug: Log the backend URL (check browser console)
+if (typeof window !== "undefined") {
+  console.log("🔗 Backend URL:", BACKEND_URL);
+  console.log("🔍 Environment variable:", process.env.NEXT_PUBLIC_BACKEND_URL);
+}
 
 type Json = unknown;
 
