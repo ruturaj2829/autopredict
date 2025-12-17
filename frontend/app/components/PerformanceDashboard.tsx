@@ -60,23 +60,32 @@ export default function PerformanceDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
-  const apiUrl = `${backendUrl.replace(/\/$/, "")}/api/v1/metrics/performance`;
+  // Use the same backend URL pattern as page.tsx
+  const RAILWAY_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://autopredict-production.up.railway.app";
+  const BACKEND_URL = RAILWAY_BACKEND_URL.replace(/\/+$/, "");
+  const apiUrl = `${BACKEND_URL}/api/v1/metrics/performance`;
 
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
         setLoading(true);
+        setError(null);
         const response = await fetch(apiUrl);
         if (!response.ok) {
-          throw new Error(`Failed to fetch metrics: ${response.statusText}`);
+          throw new Error(`Failed to fetch metrics: ${response.status} ${response.statusText}`);
         }
         const data = await response.json();
-        setMetrics(data);
-        setError(null);
+        // Check if response has actual data or is empty
+        if (data && data.model_performance && Object.keys(data.model_performance).length > 0) {
+          setMetrics(data);
+        } else {
+          // Empty response, use demo data
+          setMetrics(null);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
         console.error("Error fetching performance metrics:", err);
+        setMetrics(null); // Set to null to trigger demo data
       } finally {
         setLoading(false);
       }
@@ -88,6 +97,9 @@ export default function PerformanceDashboard() {
     return () => clearInterval(interval);
   }, [apiUrl]);
 
+  // Use demo data if metrics are empty or error
+  const useDemoData = error || !metrics || !metrics.model_performance || Object.keys(metrics.model_performance).length === 0;
+
   if (loading) {
     return (
       <div className="card" style={{ textAlign: "center", padding: "2rem" }}>
@@ -96,8 +108,10 @@ export default function PerformanceDashboard() {
     );
   }
 
-  // Use demo data if metrics are empty or error
-  const useDemoData = error || !metrics || !metrics.model_performance || Object.keys(metrics.model_performance).length === 0;
+  // Show error message if there's an error (but still show demo data)
+  if (error && !useDemoData) {
+    console.warn("Performance metrics error, using demo data:", error);
+  }
   
   const displayMetrics: PerformanceMetrics = useDemoData ? {
     model_performance: {
@@ -202,6 +216,19 @@ export default function PerformanceDashboard() {
         <p style={{ color: "#64748b", fontSize: "0.9rem" }}>
           Last updated: {displayMetrics.timestamp ? new Date(displayMetrics.timestamp).toLocaleString() : "N/A"}
         </p>
+        {error && (
+          <div style={{ 
+            marginTop: "0.5rem", 
+            padding: "0.75rem", 
+            background: "#fef3c7", 
+            border: "1px solid #f59e0b", 
+            borderRadius: "0.5rem",
+            fontSize: "0.85rem",
+            color: "#92400e"
+          }}>
+            ⚠️ Could not fetch live metrics: {error}. Showing demo data below.
+          </div>
+        )}
       </div>
 
       {/* KPI Cards */}
