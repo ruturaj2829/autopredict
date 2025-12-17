@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -621,5 +622,54 @@ def run_orchestration(event: Dict[str, Any]) -> Dict[str, Any]:
         # Catch-all: return demo response instead of error
         LOGGER.warning("Orchestration endpoint error, returning demo response: %s", exc)
         return _generate_demo_orchestration_response(event if isinstance(event, dict) else {})
+
+
+@app.get("/api/v1/metrics/performance")
+def get_performance_metrics() -> Dict[str, Any]:
+    """Aggregate performance metrics from models, agents, and UEBA."""
+    try:
+        # Load model metadata if available
+        metadata_path = Path("artifacts/model_metadata.json")
+        model_metrics = {}
+        if metadata_path.exists():
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+                model_metrics = metadata.get("evaluation_summary", {})
+        
+        # Get UEBA stats (if available)
+        try:
+            ueba_engine = get_ueba_engine()
+            ueba_stats = {
+                "total_events": len(ueba_engine._events) if hasattr(ueba_engine, "_events") else 0,
+                "fitted": ueba_engine._fitted if hasattr(ueba_engine, "_fitted") else False,
+            }
+        except Exception:
+            ueba_stats = {"total_events": 0, "fitted": False}
+        
+        # Agent orchestration stats
+        agent_stats = {
+            "orchestrations_run": 0,  # Could track this in a global counter
+            "agents_active": ["Diagnostics", "Voice", "Scheduling", "Manufacturing", "UEBA Guard"],
+        }
+        
+        return {
+            "model_performance": {
+                "random_forest": model_metrics.get("random_forest", {}),
+                "lstm": model_metrics.get("lstm", {}),
+                "lead_time": model_metrics.get("lead_time", {}),
+            },
+            "ueba_stats": ueba_stats,
+            "agent_stats": agent_stats,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as exc:
+        LOGGER.warning("Failed to get performance metrics: %s", exc)
+        return {
+            "model_performance": {},
+            "ueba_stats": {},
+            "agent_stats": {},
+            "error": str(exc),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
 # manufacturing package marker

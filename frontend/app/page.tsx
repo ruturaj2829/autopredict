@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import VoiceTour from "./components/VoiceTour";
 import RiskCharts from "./components/RiskCharts";
 import UEBAVisualization from "./components/UEBAVisualization";
+import PerformanceDashboard from "./components/PerformanceDashboard";
 
 // Get backend URL from environment variable
 const RAILWAY_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://autopredict-production.up.railway.app";
@@ -44,6 +45,7 @@ export default function HomePage() {
   const [manufacturingResponse, setManufacturingResponse] = useState<Json>("// Trigger manufacturing analytics to see clusters + CAPA");
   const [uebaResponse, setUebaResponse] = useState<Json>("// Run UEBA ingest to see behavior analysis");
   const [uebaEvents, setUebaEvents] = useState<any[]>([]);
+  const [showPerformance, setShowPerformance] = useState(false);
 
   // Loading states
   const [loadingRisk, setLoadingRisk] = useState(false);
@@ -641,6 +643,31 @@ export default function HomePage() {
               <JsonBlock label="Manufacturing analytics response" value={manufacturingResponse} />
             )}
           </div>
+        </div>
+      </section>
+
+      {/* 7. Performance Metrics Dashboard */}
+      <section id="section-performance">
+        <h2 className="section-title">7. AI Agent Performance Metrics</h2>
+        <p className="section-subtitle">
+          Comprehensive performance dashboard showing model metrics (RF & LSTM), UEBA statistics, agent activity, and overall system health.
+        </p>
+
+        <div className="card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <h3 style={{ marginTop: 0 }}>Performance Dashboard</h3>
+            <button 
+              className="btn btn-primary" 
+              onClick={() => setShowPerformance(!showPerformance)}
+            >
+              {showPerformance ? "Hide Dashboard" : "Show Performance Metrics"}
+            </button>
+          </div>
+          {showPerformance && (
+            <div style={{ marginTop: "1rem" }}>
+              <PerformanceDashboard />
+            </div>
+          )}
         </div>
       </section>
     </div>
