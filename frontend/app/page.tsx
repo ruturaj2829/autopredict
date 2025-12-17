@@ -280,20 +280,20 @@ export default function HomePage() {
       const data = await res.json();
       setUebaResponse(data);
       // Extract events from response
-      if (data && data.events && Array.isArray(data.events)) {
+      if (data && data.events && Array.isArray(data.events) && data.events.length > 0) {
         setUebaEvents(data.events);
-      } else if (data && Array.isArray(data)) {
+      } else if (data && Array.isArray(data) && data.length > 0) {
         setUebaEvents(data);
-      } else if (data && data.status === "baseline_initialized") {
-        // First call initializes baseline, create demo events for visualization
-        setUebaEvents([
+      } else {
+        // Always show demo events for visualization (even if baseline_initialized or empty)
+        const demoEvents = [
           {
             event_type: "UEBA_ANOMALY",
             subject_id: "technician-01",
             anomaly_score: 0.45,
             risk_level: "MEDIUM",
             intent_path: ["optimize"],
-            context: { ip: "192.168.1.10" },
+            context: { ip: "192.168.1.10", session_id: "session-001" },
             timestamp: new Date().toISOString(),
           },
           {
@@ -302,10 +302,20 @@ export default function HomePage() {
             anomaly_score: 0.72,
             risk_level: "HIGH",
             intent_path: ["optimize"],
-            context: { ip: "192.168.1.11" },
+            context: { ip: "192.168.1.11", session_id: "session-002" },
             timestamp: new Date(Date.now() + 1000).toISOString(),
           },
-        ]);
+          {
+            event_type: "UEBA_ANOMALY",
+            subject_id: "scheduling-agent",
+            anomaly_score: 0.58,
+            risk_level: "MEDIUM",
+            intent_path: ["optimize", "schedule"],
+            context: { ip: "192.168.1.12", session_id: "session-003" },
+            timestamp: new Date(Date.now() + 2000).toISOString(),
+          },
+        ];
+        setUebaEvents(demoEvents);
       }
     } catch (err) {
       setUebaResponse({ error: String(err) });

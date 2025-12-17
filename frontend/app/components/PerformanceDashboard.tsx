@@ -96,47 +96,73 @@ export default function PerformanceDashboard() {
     );
   }
 
-  if (error || !metrics) {
-    return (
-      <div className="card" style={{ textAlign: "center", padding: "2rem", background: "#fef2f2" }}>
-        <p style={{ color: "#ef4444" }}>Error loading metrics: {error || "No data available"}</p>
-      </div>
-    );
-  }
+  // Use demo data if metrics are empty or error
+  const useDemoData = error || !metrics || !metrics.model_performance || Object.keys(metrics.model_performance).length === 0;
+  
+  const displayMetrics: PerformanceMetrics = useDemoData ? {
+    model_performance: {
+      random_forest: {
+        precision: 0.947,
+        recall: 0.9,
+        f1_score: 0.947,
+        support: 40,
+      },
+      lstm: {
+        precision: 1.0,
+        recall: 1.0,
+        f1_score: 1.0,
+        support: 40,
+      },
+      lead_time: {
+        average_lead_minutes: 1440, // 24 hours
+        detection_rate: 0.85,
+        evaluated_failures: 15,
+      },
+    },
+    ueba_stats: {
+      total_events: 42,
+      fitted: true,
+    },
+    agent_stats: {
+      orchestrations_run: 127,
+      agents_active: ["Diagnostics", "Voice", "Scheduling", "Manufacturing", "UEBA Guard"],
+    },
+    timestamp: new Date().toISOString(),
+  } : metrics;
 
-  // Prepare data for charts
+  // Prepare data for charts using displayMetrics
   const modelComparisonData = [
     {
       metric: "Precision",
-      RF: (metrics.model_performance?.random_forest?.precision || 0) * 100,
-      LSTM: (metrics.model_performance?.lstm?.precision || 0) * 100,
+      RF: (displayMetrics.model_performance?.random_forest?.precision || 0) * 100,
+      LSTM: (displayMetrics.model_performance?.lstm?.precision || 0) * 100,
     },
     {
       metric: "Recall",
-      RF: (metrics.model_performance?.random_forest?.recall || 0) * 100,
-      LSTM: (metrics.model_performance?.lstm?.recall || 0) * 100,
+      RF: (displayMetrics.model_performance?.random_forest?.recall || 0) * 100,
+      LSTM: (displayMetrics.model_performance?.lstm?.recall || 0) * 100,
     },
     {
       metric: "F1 Score",
-      RF: (metrics.model_performance?.random_forest?.f1_score || 0) * 100,
-      LSTM: (metrics.model_performance?.lstm?.f1_score || 0) * 100,
+      RF: (displayMetrics.model_performance?.random_forest?.f1_score || 0) * 100,
+      LSTM: (displayMetrics.model_performance?.lstm?.f1_score || 0) * 100,
     },
   ];
 
   const f1Data = [
-    { name: "Random Forest", value: (metrics.model_performance?.random_forest?.f1_score || 0) * 100 },
-    { name: "LSTM", value: (metrics.model_performance?.lstm?.f1_score || 0) * 100 },
+    { name: "Random Forest", value: (displayMetrics.model_performance?.random_forest?.f1_score || 0) * 100 },
+    { name: "LSTM", value: (displayMetrics.model_performance?.lstm?.f1_score || 0) * 100 },
   ];
 
-  const leadTimeData = metrics.model_performance?.lead_time
+  const leadTimeData = displayMetrics.model_performance?.lead_time
     ? [
         {
           name: "Avg Lead Time",
-          value: (metrics.model_performance.lead_time.average_lead_minutes || 0) / 60, // Convert to hours
+          value: (displayMetrics.model_performance.lead_time.average_lead_minutes || 0) / 60, // Convert to hours
         },
         {
           name: "Detection Rate",
-          value: (metrics.model_performance.lead_time.detection_rate || 0) * 100,
+          value: (displayMetrics.model_performance.lead_time.detection_rate || 0) * 100,
         },
       ]
     : [];
@@ -144,27 +170,27 @@ export default function PerformanceDashboard() {
   const radarData = [
     {
       category: "RF Precision",
-      value: (metrics.model_performance?.random_forest?.precision || 0) * 100,
+      value: (displayMetrics.model_performance?.random_forest?.precision || 0) * 100,
       fullMark: 100,
     },
     {
       category: "RF Recall",
-      value: (metrics.model_performance?.random_forest?.recall || 0) * 100,
+      value: (displayMetrics.model_performance?.random_forest?.recall || 0) * 100,
       fullMark: 100,
     },
     {
       category: "LSTM Precision",
-      value: (metrics.model_performance?.lstm?.precision || 0) * 100,
+      value: (displayMetrics.model_performance?.lstm?.precision || 0) * 100,
       fullMark: 100,
     },
     {
       category: "LSTM Recall",
-      value: (metrics.model_performance?.lstm?.recall || 0) * 100,
+      value: (displayMetrics.model_performance?.lstm?.recall || 0) * 100,
       fullMark: 100,
     },
     {
       category: "Detection Rate",
-      value: (metrics.model_performance?.lead_time?.detection_rate || 0) * 100,
+      value: (displayMetrics.model_performance?.lead_time?.detection_rate || 0) * 100,
       fullMark: 100,
     },
   ];
@@ -174,7 +200,7 @@ export default function PerformanceDashboard() {
       <div className="card">
         <h2 style={{ marginTop: 0, fontSize: "1.5rem", fontWeight: 700 }}>AI Agent Performance Dashboard</h2>
         <p style={{ color: "#64748b", fontSize: "0.9rem" }}>
-          Last updated: {metrics.timestamp ? new Date(metrics.timestamp).toLocaleString() : "N/A"}
+          Last updated: {displayMetrics.timestamp ? new Date(displayMetrics.timestamp).toLocaleString() : "N/A"}
         </p>
       </div>
 
@@ -183,27 +209,34 @@ export default function PerformanceDashboard() {
         <div className="card" style={{ textAlign: "center" }}>
           <h4 style={{ marginTop: 0, fontSize: "0.85rem", color: "#64748b", textTransform: "uppercase" }}>RF F1 Score</h4>
           <p style={{ fontSize: "2rem", fontWeight: 700, color: "#3b82f6", margin: 0 }}>
-            {((metrics.model_performance?.random_forest?.f1_score || 0) * 100).toFixed(1)}%
+            {((displayMetrics.model_performance?.random_forest?.f1_score || 0) * 100).toFixed(1)}%
           </p>
         </div>
         <div className="card" style={{ textAlign: "center" }}>
           <h4 style={{ marginTop: 0, fontSize: "0.85rem", color: "#64748b", textTransform: "uppercase" }}>LSTM F1 Score</h4>
           <p style={{ fontSize: "2rem", fontWeight: 700, color: "#8b5cf6", margin: 0 }}>
-            {((metrics.model_performance?.lstm?.f1_score || 0) * 100).toFixed(1)}%
+            {((displayMetrics.model_performance?.lstm?.f1_score || 0) * 100).toFixed(1)}%
           </p>
         </div>
         <div className="card" style={{ textAlign: "center" }}>
           <h4 style={{ marginTop: 0, fontSize: "0.85rem", color: "#64748b", textTransform: "uppercase" }}>Detection Rate</h4>
           <p style={{ fontSize: "2rem", fontWeight: 700, color: "#10b981", margin: 0 }}>
-            {((metrics.model_performance?.lead_time?.detection_rate || 0) * 100).toFixed(1)}%
+            {((displayMetrics.model_performance?.lead_time?.detection_rate || 0) * 100).toFixed(1)}%
           </p>
         </div>
         <div className="card" style={{ textAlign: "center" }}>
           <h4 style={{ marginTop: 0, fontSize: "0.85rem", color: "#64748b", textTransform: "uppercase" }}>UEBA Events</h4>
           <p style={{ fontSize: "2rem", fontWeight: 700, color: "#f59e0b", margin: 0 }}>
-            {metrics.ueba_stats?.total_events || 0}
+            {displayMetrics.ueba_stats?.total_events || 0}
           </p>
         </div>
+        {useDemoData && (
+          <div className="card" style={{ textAlign: "center", background: "#fef3c7", border: "1px solid #f59e0b" }}>
+            <p style={{ fontSize: "0.85rem", color: "#92400e", margin: 0 }}>
+              📊 Showing demo data (artifacts not available)
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Main Charts Grid */}
@@ -297,31 +330,31 @@ export default function PerformanceDashboard() {
               <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>Random Forest</td>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>
-                  {((metrics.model_performance?.random_forest?.precision || 0) * 100).toFixed(2)}%
+                  {((displayMetrics.model_performance?.random_forest?.precision || 0) * 100).toFixed(2)}%
                 </td>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>
-                  {((metrics.model_performance?.random_forest?.recall || 0) * 100).toFixed(2)}%
+                  {((displayMetrics.model_performance?.random_forest?.recall || 0) * 100).toFixed(2)}%
                 </td>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>
-                  {((metrics.model_performance?.random_forest?.f1_score || 0) * 100).toFixed(2)}%
+                  {((displayMetrics.model_performance?.random_forest?.f1_score || 0) * 100).toFixed(2)}%
                 </td>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>
-                  {metrics.model_performance?.random_forest?.support || 0}
+                  {displayMetrics.model_performance?.random_forest?.support || 0}
                 </td>
               </tr>
               <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>LSTM</td>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>
-                  {((metrics.model_performance?.lstm?.precision || 0) * 100).toFixed(2)}%
+                  {((displayMetrics.model_performance?.lstm?.precision || 0) * 100).toFixed(2)}%
                 </td>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>
-                  {((metrics.model_performance?.lstm?.recall || 0) * 100).toFixed(2)}%
+                  {((displayMetrics.model_performance?.lstm?.recall || 0) * 100).toFixed(2)}%
                 </td>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>
-                  {((metrics.model_performance?.lstm?.f1_score || 0) * 100).toFixed(2)}%
+                  {((displayMetrics.model_performance?.lstm?.f1_score || 0) * 100).toFixed(2)}%
                 </td>
                 <td style={{ padding: "0.75rem", fontSize: "0.9rem" }}>
-                  {metrics.model_performance?.lstm?.support || 0}
+                  {displayMetrics.model_performance?.lstm?.support || 0}
                 </td>
               </tr>
             </tbody>
